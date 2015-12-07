@@ -9,6 +9,7 @@
 #endif // _MSC_VER > 1000
 
 #include "TcpClient.h"
+#include "afxwin.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CSendDlg dialog
@@ -64,6 +65,8 @@ private:
 	static void OnSendFileSucc(void *pNotifyObj, char *szPathName);
 	static void OnSendFileFail(void *pNotifyObj, char *szPathName, EMSendFileFailReason SendFileFailReason);
 	static void OnSendFileProgress(void *pNotifyObj, int nSentBytes, int nTotalBytes);
+public:
+	CEdit m_edit;
 };
 
 //{{AFX_INSERT_LOCATION}}

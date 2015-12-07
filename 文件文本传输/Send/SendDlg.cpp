@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "Send.h"
 #include "SendDlg.h"
+#include "Wrlog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -72,7 +73,7 @@ CSendDlg::CSendDlg(CWnd* pParent /*=NULL*/)
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
-	m_pTcpClient = new CTcpClient(this);
+	m_pTcpClient = new CTcpClient(this);//定义一个tcp客户端的指针
 }
 
 CSendDlg::~CSendDlg(void)
@@ -93,6 +94,7 @@ void CSendDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_FILE_NAME, m_strFileName);
 	DDX_Text(pDX, IDC_MSG, m_strMsg);
 	//}}AFX_DATA_MAP
+	DDX_Control(pDX, IDC_MSG, m_edit);
 }
 
 BEGIN_MESSAGE_MAP(CSendDlg, CDialog)
@@ -138,18 +140,20 @@ BOOL CSendDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
-	m_strServerIp = "127.0.0.1";
+	m_strServerIp = "127.0.0.1";//连接服务器的地址，端口
 	m_nPort = 8000;
 	m_dwFilePackageSize = 1024;
-	m_strFileName = "d:\\a.pdf";
+	m_strFileName = "d:\\cn_visio_professional_2013_x64_1138440.exe";//默认传输的文件
+	
 	UpdateData(FALSE);
 
-	m_pTcpClient->SetProgressTimeInterval(100);
+	m_pTcpClient->SetProgressTimeInterval(100);   //进程时间间隔
 	m_pTcpClient->SetOnSocketClose(OnSocketClose);
-	m_pTcpClient->SetOnOneNetMsg(OnOneNetMsg);
-	m_pTcpClient->SetOnSendFileSucc(OnSendFileSucc);
-	m_pTcpClient->SetOnSendFileFail(OnSendFileFail);
-	m_pTcpClient->SetOnSendFileProgress(OnSendFileProgress);
+	m_pTcpClient->SetOnOneNetMsg(OnOneNetMsg);//信息发送
+
+	m_pTcpClient->SetOnSendFileSucc(OnSendFileSucc);//文件发送成功
+	m_pTcpClient->SetOnSendFileFail(OnSendFileFail);//文件发送失败
+	m_pTcpClient->SetOnSendFileProgress(OnSendFileProgress);//发送文件的进程
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -207,15 +211,19 @@ void CSendDlg::OnConnect()
 {
 	if(!UpdateData())
 		return;
-
-
-	m_pTcpClient->SetServerIpAddr((char *)(LPCTSTR)m_strServerIp);
-	m_pTcpClient->SetPort(m_nPort);
-	m_pTcpClient->SetFilePackageSize(m_dwFilePackageSize);
 	
+
+	m_pTcpClient->SetServerIpAddr((char *)(LPCTSTR)m_strServerIp);//从界面上获取IP
+	m_pTcpClient->SetPort(m_nPort);
+	m_pTcpClient->SetFilePackageSize(m_dwFilePackageSize);//文件包大小
+	//////////////////////////////////////////////////////////////////////////获取的值都保存在m_ptcpclient 指针
 	m_ctlCnnStatus.SetWindowText("请等待...");
+	wrLog("连接服务器请等待。。。。。。");
 	if(!m_pTcpClient->Connect())
+	{
 		m_ctlCnnStatus.SetWindowText("连接失败!");
+		wrLog("连接装态:%s",m_ctlCnnStatus);
+	}
 	else
 		m_ctlCnnStatus.SetWindowText("已连接");
 }
@@ -244,10 +252,10 @@ void CSendDlg::OnSendMsg(void)
 
 	if(!UpdateData())
 		return;
-
-
-	sprintf(s, "@00000001%s", m_strMsg);
+	sprintf(s, "路人甲：%s", m_strMsg);
 	m_pTcpClient->SendNetMsg(s, strlen(s) - 6);
+	wrLog("SEND 发送的消息是：%s",s);
+	m_edit.SetWindowText("");
 }
 
 void CSendDlg::OnSocketClose(void *pNotifyObj, SOCKET hSocket, EMSocketCloseReason scr)
@@ -279,7 +287,7 @@ void CSendDlg::OnSendFileSucc(void *pNotifyObj, char *szPathName)
 	pSendDlg->DispInfo("OnSendFileSucc");
 }
 
-void CSendDlg::OnSendFileFail(void *pNotifyObj, char *szPathName, EMSendFileFailReason SendFileFailReadson)
+void CSendDlg::OnSendFileFail(void *pNotifyObj, char *szPathName, EMSendFileFailReason SendFileFailReadson)//文件发送失败
 {
 	CSendDlg *pSendDlg = (CSendDlg *)pNotifyObj;
 	CString strInfo;
@@ -288,7 +296,7 @@ void CSendDlg::OnSendFileFail(void *pNotifyObj, char *szPathName, EMSendFileFail
 	pSendDlg->DispInfo(strInfo);
 }
 
-void CSendDlg::OnSendFileProgress(void *pNotifyObj, int nSentBytes, int nTotalBytes)
+void CSendDlg::OnSendFileProgress(void *pNotifyObj, int nSentBytes, int nTotalBytes) //文件发送进程
 {
 	CSendDlg *pSendDlg = (CSendDlg *)pNotifyObj;
 	CString strInfo;
@@ -297,12 +305,13 @@ void CSendDlg::OnSendFileProgress(void *pNotifyObj, int nSentBytes, int nTotalBy
 	pSendDlg->DispInfo(strInfo);
 }
 
-void CSendDlg::DispInfo(CString strInfo)
+void CSendDlg::DispInfo(CString strInfo)//显示文本信息
 {
 	m_ctlInfo.SetWindowText(strInfo);
+	
 }
 
-void CSendDlg::OnCancelSend() 
+void CSendDlg::OnCancelSend() //取消发送
 {
 	m_pTcpClient->CancelSendFile();	
 }
